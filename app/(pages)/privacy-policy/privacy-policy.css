@@ -1,0 +1,33 @@
+#privacy-policy-container h1,#privacy-policy-container h2,#privacy-policy-container h3{
+  @apply font-bold
+}
+#privacy-policy-container *{
+  @apply py-1
+}
+#privacy-policy-container h1{
+  @apply text-3xl
+}
+#privacy-policy-container h2{
+  @apply text-2xl
+}
+#privacy-policy-container h3{
+  @apply text-lg
+}
+
+#privacy-policy-container h1~h2, #privacy-policy-container h1~* {
+  @apply indent-4
+}
+#privacy-policy-container h2~*{
+  @apply indent-8
+}
+#privacy-policy-container h3~ol{
+  @apply indent-12
+}
+
+#privacy-policy-container li::before{
+  content: "-";
+  margin-right: 8px;
+}
+#privacy-policy-container li>ol{
+  @apply pl-5
+}

@@ -1,0 +1,126 @@
+import { Hotel } from "@/lib/db/models";
+
+export async function GET(req) {
+  const searchParams = Object.fromEntries(new URL(req.url).searchParams);
+
+  const limit = Number(searchParams?.limit) || 10;
+  const searchQuery = searchParams?.searchQuery?.trim().toLowerCase() || "";
+
+  const Places = [
+    { city: "Chennai", country: "IND", code: "553248633981715834" },
+    { city: "Delhi", country: "IND", code: "180000" },
+    { city: "Bengaluru", country: "IND", code: "553248633981715864" },
+  ];
+
+  // Helper function → filter Places list using searchQuery
+  const filterPlaces = (query) => {
+    if (!query) return Places;
+
+    return Places.filter((place) =>
+      place.city.toLowerCase().includes(query) ||
+      place.country.toLowerCase().includes(query)
+    );
+  };
+
+  try {
+    // ----------------------------------------
+    // CASE 1: No search query → return DB places or default Places
+    // ----------------------------------------
+    if (!searchQuery) {
+      const hotell = await Hotel.find({})
+        .limit(limit)
+        .select("address -_id")
+        .exec();
+
+      const hotels =
+        hotell?.length === 0
+          ? Places
+          : hotell.map((hotel) => ({
+              city: hotel.address.city,
+              country: hotel.address.country,
+              code: hotel.address.code,
+            }));
+
+      return Response.json({
+        success: true,
+        message: "Available places fetched successfully",
+        data: hotels.map((h) => ({
+          city: h.city,
+          country: h.country,
+          type: "place",
+          code: h.code,
+        })),
+      });
+    }
+
+    // ----------------------------------------
+    // CASE 2: Search DB + search Places list
+    // ----------------------------------------
+
+    const safeRegex = searchQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    // Search from MongoDB
+    const hotels = await Hotel.find({
+      $or: [
+        {
+          $expr: {
+            $regexMatch: {
+              input: { $toLower: "$address.city" },
+              regex: safeRegex,
+            },
+          },
+        },
+        {
+          $expr: {
+            $regexMatch: {
+              input: { $toLower: "$address.country" },
+              regex: safeRegex,
+            },
+          },
+        },
+      ],
+    })
+      .limit(limit)
+      .select("address -_id")
+      .exec();
+
+    const hotelResults = hotels.map((hotel) => ({
+      city: hotel.address.city,
+      country: hotel.address.country,
+      type: "place",
+    }));
+
+    // Search Places list
+    const placeResults = filterPlaces(searchQuery).map((p) => ({
+      city: p.city,
+      country: p.country,
+      type: "place",
+      code: p.code,
+    }));
+
+    // Merge + remove duplicates
+    const finalData = Array.from(
+      new Map(
+        [...hotelResults, ...placeResults].map((item) => [
+          `${item.city}-${item.country}`,
+          item,
+        ])
+      ).values()
+    );
+
+    return Response.json({
+      success: true,
+      message: "Available places fetched successfully",
+      data: finalData,
+    });
+  } catch (e) {
+    console.log("catch error", e);
+    return Response.json(
+      {
+        success: false,
+        message: "Error getting available places",
+      },
+      { status: 500 }
+    );
+  }
+}

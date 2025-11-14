@@ -1,0 +1,33 @@
+#terms-of-service-container h1, #terms-of-service-container h2,#terms-of-service-container h3{
+  @apply font-bold
+}
+#terms-of-service-container *{
+  @apply py-1
+}
+#terms-of-service-container h1{
+  @apply text-3xl
+}
+#terms-of-service-container h2{
+  @apply text-2xl
+}
+#terms-of-service-container h3{
+  @apply text-lg
+}
+
+#terms-of-service-container h1~h2,#terms-of-service-container h1~* {
+  @apply indent-4
+}
+#terms-of-service-container h2~*{
+  @apply indent-8
+}
+#terms-of-service-container h3~ol{
+  @apply indent-12
+}
+
+#terms-of-service-container li::before{
+  content: "-";
+  margin-right: 8px;
+}
+#terms-of-service-container li>ol{
+  @apply pl-5
+}
