@@ -113,7 +113,7 @@ export default async function RootLayout({ children }) {
           <StoreProvider>
             <SessionProvider>
               <div className="mx-auto max-w-[1440px]">
-                <Notice />
+                {/* <Notice /> */}
                 <MaintenanceNotice maintenanceMode={maintenanceMode} />
                 {children}
               </div>

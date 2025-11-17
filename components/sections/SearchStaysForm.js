@@ -321,17 +321,20 @@ function SearchStaysForm({ params = {} }) {
             defaultSelected={{
               city: stayFormData.destination.city || "",
               country: stayFormData.destination.country || "",
+              code: stayFormData.destination.code || "",
             }}
             excludeVals={["type"]}
             getSelected={(selected) => {
               let d = {
                 city: "",
                 country: "",
+                code: "",
               };
               if (Object.keys(selected).length > 0) {
                 d = {
                   city: selected.city,
                   country: selected.country,
+                  code: selected.code,
                 };
                 dispatch(setStayForm({ destination: d }));
               }

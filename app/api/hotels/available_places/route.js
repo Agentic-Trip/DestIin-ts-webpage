@@ -1,15 +1,28 @@
 import { Hotel } from "@/lib/db/models";
 
 export async function GET(req) {
+  // Log minimal, serializable request details so logs appear clearly in the server terminal
+  try {
+    const headers = {};
+    for (const [k, v] of req.headers) headers[k] = v;
+    console.log("Available places API called", {
+      url: req.url,
+      method: req.method,
+      headers,
+    });
+  } catch (logErr) {
+    console.log("Available places API called - unable to serialize request details", String(logErr));
+  }
+
   const searchParams = Object.fromEntries(new URL(req.url).searchParams);
 
   const limit = Number(searchParams?.limit) || 10;
   const searchQuery = searchParams?.searchQuery?.trim().toLowerCase() || "";
 
   const Places = [
-    { city: "Chennai", country: "IND", code: "553248633981715834" },
-    { city: "Delhi", country: "IND", code: "180000" },
-    { city: "Bengaluru", country: "IND", code: "553248633981715864" },
+    { city: "Chennai", country: "IN", code: "553248633981715834" },
+    { city: "Delhi", country: "IN", code: "180000" },
+    { city: "Bengaluru", country: "IN", code: "553248633981715864" },
   ];
 
   // Helper function → filter Places list using searchQuery
@@ -98,15 +111,13 @@ export async function GET(req) {
       code: p.code,
     }));
 
-    // Merge + remove duplicates
-    const finalData = Array.from(
-      new Map(
-        [...hotelResults, ...placeResults].map((item) => [
-          `${item.city}-${item.country}`,
-          item,
-        ])
-      ).values()
-    );
+    // Merge + remove duplicates (object-based to avoid Map usage)
+    const combined = [...hotelResults, ...placeResults];
+    const keyed = {};
+    for (const item of combined) {
+      keyed[`${item.city}-${item.country}`] = item;
+    }
+    const finalData = Object.values(keyed);
 
     return Response.json({
       success: true,
@@ -114,7 +125,7 @@ export async function GET(req) {
       data: finalData,
     });
   } catch (e) {
-    console.log("catch error", e);
+    console.error('Available places API error', e && e.stack ? e.stack : e);
     return Response.json(
       {
         success: false,

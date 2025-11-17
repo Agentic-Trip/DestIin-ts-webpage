@@ -39,6 +39,7 @@ import validateHotelSearchParams from "@/lib/zodSchemas/hotelSearchParams";
 import NotFound from "@/app/not-found";
 import routes from "@/data/routes.json";
 export default async function HotelDetailsPage({ params }) {
+  console.log("slug params:", params);
   const session = await auth();
   const slug = params.slug;
 
@@ -58,7 +59,7 @@ export default async function HotelDetailsPage({ params }) {
 
   const hotelDetails = await getHotel(slug, searchState);
 
-  if (Object.keys(hotelDetails).length === 0) return notFound();
+  if (Object?.keys(hotelDetails)?.length === 0) return notFound();
 
   const reviews = await getManyDocs(
     "HotelReview",
@@ -79,7 +80,7 @@ export default async function HotelDetailsPage({ params }) {
     let aDiscountAmount = 0;
     let bDiscountAmount = 0;
 
-    if (a.price.discount.type === "percentage") {
+    if (a?.price?.discount?.type === "percentage") {
       aDiscountAmount = a.price.base * (+a.price.discount.amount / 100);
     } else {
       aDiscountAmount = +a.price.discount.amount;
@@ -99,6 +100,7 @@ export default async function HotelDetailsPage({ params }) {
   });
   const cheapestRoom = roomsSorted[0];
 
+  // const price = hotelPriceCalculation(cheapestRoom.price, 1);
   const price = hotelPriceCalculation(cheapestRoom.price, 1);
 
   const cheapestRoomPrice = formatCurrency(price.total);

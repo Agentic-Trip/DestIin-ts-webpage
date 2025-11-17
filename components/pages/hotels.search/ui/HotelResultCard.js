@@ -11,7 +11,7 @@ import { formatCurrency } from "@/lib/utils";
 export function HotelResultCard({
   hotel: {
     image = "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-    price = {},
+    price = 0,
     availableRoomsCount,
     rating = 4.2,
     totalReviews = 371,
@@ -25,12 +25,13 @@ export function HotelResultCard({
   },
   searchState,
 }) {
+  console.log("image url",image)
   const breakdown = hotelPriceCalculation(price, 1);
 
-  const discountPercentage = breakdown.discountPercentage;
-  const totalDiscount = +breakdown.discount;
-  const totalExcludindDiscount = +breakdown.totalBeforeDiscount;
-  const totalIncludinhDiscount = +breakdown.discountedTotalPerPassenger;
+  const discountPercentage = breakdown?.discountPercentage;
+  const totalDiscount = +breakdown?.discount;
+  const totalExcludindDiscount = +breakdown?.totalBeforeDiscount;
+  const totalIncludinhDiscount = +breakdown?.discountedTotalPerPassenger;
 
   return (
     <div className="flex h-min rounded-l-[8px] rounded-r-[8px] bg-white text-[0.75rem] font-medium text-secondary shadow-sm max-md:flex-col">
@@ -48,7 +49,7 @@ export function HotelResultCard({
           <div className="flex grow flex-col gap-2">
             <div>
               <p className="text-2xl font-bold">{name}</p>
-              <p>{address}</p>
+              <p>{address ||`${searchState?.city}, ${searchState?.country=="IND"?"India":searchState?.country=="IN"?"India":""}`}</p>
             </div>
 
             <div className="flex flex-wrap gap-1">
@@ -62,9 +63,10 @@ export function HotelResultCard({
                   </p>
                 );
               })}
+              {amenities.length > 5 && (
               <p className="rounded-xl px-2 py-1 text-xs font-bold text-tertiary">
                 + more
-              </p>
+              </p>)}
             </div>
             <div className="flex items-center justify-between">
               <div className="mt-2 flex items-center gap-[4px]">
@@ -100,7 +102,7 @@ export function HotelResultCard({
                   </div>
                 ) : (
                   <p className="text-right text-[1.5rem] font-bold text-tertiary">
-                    {formatCurrency(totalExcludindDiscount)}
+                    {formatCurrency(price)}
                   </p>
                 )}
                 <p className="text-right text-[0.875rem] text-secondary/75">

@@ -180,7 +180,7 @@ export function HotelsFilter({
               </div>
             </div>
           </Dropdown>
-          <Dropdown title={"Rating"} open>
+          {/* <Dropdown title={"Rating"} open>
             <FilterRating
               value={stayState.filters.rates}
               setValue={(rate) => {
@@ -273,7 +273,7 @@ export function HotelsFilter({
                   : "Show less"}
               </Button>
             </div>
-          </Dropdown>
+          </Dropdown> */}
           <div className="flex justify-end">
             <Button
               type={"button"}

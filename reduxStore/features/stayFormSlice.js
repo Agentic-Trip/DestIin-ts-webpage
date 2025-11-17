@@ -4,6 +4,7 @@ export const defaultHotelFormValue = {
   destination: {
     city: "",
     country: "",
+    code:""
   },
   checkIn: "",
   checkOut: "",

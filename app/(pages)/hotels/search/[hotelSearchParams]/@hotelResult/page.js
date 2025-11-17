@@ -13,9 +13,11 @@ import { singleRoomFareBreakdown } from "@/lib/helpers/hotels/priceCalculation";
 import { EmptyResult } from "@/components/EmptyResult";
 import { cookies } from "next/headers";
 import SetCookies from "@/components/helpers/SetCookies";
+import Designation from "@/data/Destination";
 export default async function HotelResultPage({ params }) {
   const decodedSp = decodeURIComponent(params.hotelSearchParams);
   const spObj = Object.fromEntries(new URLSearchParams(decodedSp));
+  console.log("HotelResultPage params spObj:", spObj);
 
   let filters = extractFiltersObjFromSearchParams(spObj);
   const validatedFilters = validateHotelSearchFilter(filters);
@@ -23,7 +25,11 @@ export default async function HotelResultPage({ params }) {
   const session = await auth();
 
   const validate = validateHotelSearchParams(spObj);
-
+const dateFormater = (dateStr) => {
+  const d = new Date(Number(dateStr));
+const formatted = d?.toISOString().split("T")[0];
+return formatted;
+}
   const formStateError = {
     ...spObj,
     checkIn: new Date(spObj.checkIn)?.toLocaleString("en-CA", {
@@ -39,6 +45,7 @@ export default async function HotelResultPage({ params }) {
     destination: { city: spObj.city, country: spObj.country },
     errors: validate.errors,
   };
+  console.log("formStateError",formStateError)
   delete formStateError.city;
   delete formStateError.country;
 
@@ -49,36 +56,77 @@ export default async function HotelResultPage({ params }) {
   // let hotels = await getHotels(validate.data, {
   //   filters: validatedFilters?.data,
   // });
-  const apiUrl = process.env.BACKEND_URL+"/hotels/dida"
+ const apiUrl = `${process.env.BACKEND_URL}hotels/dida`;
+console.log("validatedFilters:", validatedFilters);
+console.log("validatedFilters params:", params);
 
-  let hotels = [];
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+let hotels = [];
+const bodyObj={
+    "country": Designation.find(des => des.city === spObj.city)?.country || "",
+    cityCode: Number(Designation.find(des => des.city === spObj.city)?.code || ""),
+    fromDate: dateFormater(spObj.checkIn),
+    toDate: dateFormater(spObj.checkOut),    
+    "sort": 1,
+    "currency": "EUR",
+    "occupancy": [
+        {
+            "adults":  spObj?.guests ? Number(spObj.guests) : 1,                 
+            "roomCount": spObj?.rooms ? Number(spObj.rooms) : 1,
+            "childAges": []
+        }
+    ],
+    "employee_id": "HR-EMP-00001"
+}
+console.log("Request Body for External API:", bodyObj);
+try {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 20000);
 
-    const res = await fetch(apiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ search: validate.data, filters: validatedFilters?.data }),
-      signal: controller.signal,
-    });
+  const res = await fetch(apiUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(bodyObj),
+    signal: controller.signal,
+  });
 
-    clearTimeout(timeoutId);
+  clearTimeout(timeoutId);
 
-    if (!res.ok) throw new Error(`Hotels API responded with ${res.status}`);
-    const payload = await res.json();
-    hotels = Array.isArray(payload) ? payload : payload?.data ?? [];
-  } catch (err) {
-    console.error("External hotels API failed:", err?.message ?? err);
-    // fallback to internal service
-    hotels = await getHotels(validate.data, { filters: validatedFilters?.data }).catch(() => []);
+  if (!res.ok) throw new Error(`Hotels API responded with ${res.status}`);
+
+  const payload = await res.json();
+
+  console.log("External API Payload:", payload);
+
+  // ===========================
+  // UNIVERSAL FIX
+  // ===========================
+  if (Array.isArray(payload)) {
+    hotels = payload;
+  } else if (Array.isArray(payload?.data)) {
+    hotels = payload.data;
+  } else {
+    hotels = []; // fallback array
   }
+
+  console.log("Final Hotels Array:", hotels.length);
+} catch (err) {
+  console.error("External hotels API failed:", err);
+
+  hotels = await getHotels(validate.data, {
+    filters: validatedFilters?.data,
+  }).catch(() => []);
+
+  // Ensure fallback is always an array
+  if (!Array.isArray(hotels)) hotels = [];
+}
+
 
   // show liked hotels if user is logged in
   if (session?.user?.id) {
     const userDetails = await getUserDetails(session?.user?.id);
 
-    hotels = hotels.map((hotel) => {
+    hotels = 
+    hotels.map((hotel) => {
       const liked = userDetails?.hotels?.bookmarked?.includes(hotel._id);
       return { ...hotel, liked };
     });
@@ -93,6 +141,7 @@ export default async function HotelResultPage({ params }) {
           { hotelId: hotel._id, slug: hotel.slug },
           [hotel._id + "_review", hotel.slug + "_review", "hotelReviews"],
         );
+        console.log("Hotel Reviews:", reviews);
         const totalRatingsSum = reviews.reduce(
           (acc, review) => acc + +review.rating,
           0,
@@ -107,26 +156,39 @@ export default async function HotelResultPage({ params }) {
           if (!ratingFilter) return null;
         }
 
-        const cheapestRoom = [...hotel.rooms].sort((a, b) => {
-          const aPrice = singleRoomFareBreakdown(a, 1).total;
-          const bPrice = singleRoomFareBreakdown(b, 1).total;
+        const cheapestRoom =hotel.rooms;
+        // const cheapestRoom = [...hotel.rooms].sort((a, b) => {
+        //   const aPrice = singleRoomFareBreakdown(a, 1).total;
+        //   const bPrice = singleRoomFareBreakdown(b, 1).total;
 
-          return aPrice - bPrice;
-        })[0];
+        //   return aPrice - bPrice;
+        // })[0];
+        const priceSplit = spObj?.filter_priceRange.split(',');
+        const minPrice = priceSplit && priceSplit.length > 0 ? Number(priceSplit[0]) : 0;
+        const maxPrice = priceSplit && priceSplit.length > 1 ? Number(priceSplit[1]) : 2000;
+        const roomPrices = cheapestRoom?.price ? [cheapestRoom.price] : [];
+        const roomMinPrice = roomPrices.length > 0 ? Math.min(...roomPrices) : 0;
+        const roomMaxPrice = roomPrices.length > 0 ? Math.max(...roomPrices) : 0;
 
+        if (roomMinPrice < minPrice || roomMaxPrice > maxPrice) return null;
+        
         return {
-          _id: hotel._id,
-          slug: hotel.slug,
+          _id: hotel._id ||hotel.id,
+          slug: hotel.id,
           name: hotel.name,
-          address: Object.values(hotel.address).join(", "),
-          amenities: hotel.amenities.slice(0, 5),
-          price: cheapestRoom.price,
-          availableRoomsCount: hotel.rooms.length,
+          // address: Object.values(hotel.address).join(", "),
+          address: hotel.location,
+          // amenities: hotel?.amenities.slice(0, 5),
+          amenities: hotel?.amenities,
+          price: hotel.rooms?.price,
+          availableRoomsCount: hotel?.rooms?.length,
           rating: rating,
           totalReviews: totalReviewsCount,
           ratingScale: ratingScale || "N/A",
-          image: hotel.images[0],
-          liked: hotel.liked,
+          image: hotel?.images ||hotel?.thumbnails[0],
+          // image: hotel?.images[0],
+          liked: hotel?.liked,
+          amenities:[hotel?.rooms?.room_basis]
         };
       }),
     )
