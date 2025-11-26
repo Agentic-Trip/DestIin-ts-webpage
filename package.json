@@ -6,7 +6,7 @@
     "defaults"
   ],
   "scripts": {
-    "dev": "cross-env TZ=UTC next dev",
+    "dev": "next dev",
     "build": "next build",
      "start": "next start",
     "start:3001": "next start -p 3001",

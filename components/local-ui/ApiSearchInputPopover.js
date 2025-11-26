@@ -12,6 +12,7 @@ import { useState, useEffect, useRef } from "react";
 import { Skeleton } from "../ui/skeleton";
 
 import searchIcon from "@/public/icons/search.svg";
+
 export function ApiSearchInputPopover({
   className,
   defaultSelected = {},
@@ -35,6 +36,7 @@ export function ApiSearchInputPopover({
     setVal(defaultSelected);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(defaultSelected)]);
+  
   return (
     <>
       <Popover
@@ -69,12 +71,9 @@ function SearchResults({
     url: process.env.NEXT_PUBLIC_BASE_URL,
     method: "GET",
     searchParamsName: "searchQuery",
-    next: {
-      revalidate: 0,
-      tags: [],
-    },
   },
 }) {
+  console.log("fetchInputs in ApiSearchInputPopover:", fetchInputs);
   const [searchQuery, setSearchQuery] = useState("");
   const urlSearchParam = new URLSearchParams({
     [fetchInputs.searchParamsName]: searchQuery,
@@ -83,32 +82,49 @@ function SearchResults({
   const [loading, setLoading] = useState(false);
 
   const inputRef = useRef(null);
+  
   useEffect(() => {
     async function getData() {
       setLoading(true);
-      const res = await fetch(`${fetchInputs.url}?${urlSearchParam}`, {
-        next: {
-          revalidate: fetchInputs?.next?.revalidate || 600,
-          tags: fetchInputs?.next?.tags,
-        },
-        method: fetchInputs?.method || "GET",
-        cache: "default",
-      });
-      if (!res.ok) {
-        return { success: false, message: "An error occurred" };
+      const apiUrl = fetchInputs?.url;
+
+      if (!apiUrl) {
+        console.error("API URL is missing for ApiSearchInputPopover!");
+        setLoading(false);
+        return;
       }
-      const data = await res.json();
-      setData(data);
-      getSearchResults(data);
-      setLoading(false);
+      
+      try {
+        const res = await fetch(`${apiUrl}?${urlSearchParam}`, {
+          method: fetchInputs?.method || "GET",
+          cache: "no-store", // For client-side, prevent caching or use "default"
+        });
+        
+        if (!res.ok) {
+          console.error("Fetch failed:", res.status);
+          setLoading(false);
+          return;
+        }
+        
+        const data = await res.json();
+        setData(data);
+        getSearchResults(data);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setLoading(false);
+      }
     }
+    
     getData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlSearchParam]);
+  
   const handleInputChange = (e) => {
     const value = e.target.value || "";
     setSearchQuery(value);
   };
+  
   return (
     <div>
       <div className={"mb-2 flex"}>

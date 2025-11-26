@@ -187,6 +187,7 @@ h2.react-datepicker__current-month {
 .react-datepicker__month {
   padding: 0.4rem;
   text-align: center;
+  
   @apply rounded-b-sm bg-white;
 }
 .react-datepicker__month .react-datepicker__month-text,
@@ -364,10 +365,14 @@ h2.react-datepicker__current-month {
 .react-datepicker__day-names {
   white-space: nowrap;
   margin-bottom: -8px;
+  @apply border-b bg-primary;
 }
 
 .react-datepicker__week {
   white-space: nowrap;
+}
+.react-datepicker__sr-only{
+  display: none;
 }
 
 .react-datepicker__day-name,
