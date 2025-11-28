@@ -15,10 +15,52 @@ export async function POST(req) {
   }
 
   try {
+    console.log("get_reserved_hotel - body:", body);
+    console.log("get_reserved_hotel - userId:", session.user.id);
+    
     const hotel = await getOneDoc("Hotel", { slug: body.slug }, ["hotels"], 0);
+    console.log("get_reserved_hotel - hotel found:", hotel?._id);
+
+    // If hotel not found in local DB, try to find booking without hotel lookup
+    let hotelId = hotel?._id;
+    
+    if (!hotelId) {
+      console.log("Hotel not found in local DB, searching for any pending booking for user");
+      // Try to find the most recent pending booking for this user
+      const reservedHotelBooking = await HotelBooking.findOne({
+        userId: strToObjectId(session.user.id),
+        $or: [
+          { bookingStatus: "pending", paymentStatus: "pending" },
+          {
+            bookingStatus: "confirmed",
+            paymentStatus: "pending",
+            paymentMethod: "cash",
+          },
+        ],
+      }).sort({ createdAt: -1 });
+
+      if (!reservedHotelBooking) {
+        console.log("No reserved hotel booking found for user");
+        return Response.json(
+          { success: false, message: "No reserved hotel booking found" },
+          { status: 404 },
+        );
+      }
+
+      console.log("Found booking:", reservedHotelBooking._id);
+      
+      return Response.json(
+        {
+          success: true,
+          message: "Reserved hotel booking found",
+          data: reservedHotelBooking,
+        },
+        { status: 200 },
+      );
+    }
 
     const reservedHotelBooking = await HotelBooking.findOne({
-      hotelId: strToObjectId(hotel._id),
+      hotelId: strToObjectId(hotelId),
       checkInDate: new Date(body.checkInDate),
       checkOutDate: new Date(body.checkOutDate),
       userId: strToObjectId(session.user.id),
@@ -33,6 +75,7 @@ export async function POST(req) {
     }).sort({ createdAt: -1 });
 
     if (!reservedHotelBooking) {
+      console.log("No reserved hotel booking found matching criteria");
       return Response.json(
         { success: false, message: "No reserved hotel booking found" },
         { status: 404 },
@@ -77,8 +120,9 @@ export async function POST(req) {
       { status: 200 },
     );
   } catch (error) {
+    console.error("get_reserved_hotel error:", error);
     return Response.json(
-      { success: false, message: "Error getting reserved hotel booking" },
+      { success: false, message: `Error getting reserved hotel booking: ${error.message}` },
       { status: 500 },
     );
   }

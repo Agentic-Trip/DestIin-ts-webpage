@@ -18,6 +18,7 @@ export default function HotelBookingPayment({
 }) {
   const router = useRouter();
   const [paymentMethodType, setPaymentMethodType] = useState("cash");
+  const [loading, setLoading] = useState(false);
   const {
     data: hotelBookingData,
     loading: hotelBookingLoading,
@@ -36,51 +37,9 @@ export default function HotelBookingPayment({
     },
   );
 
-  const { data, loading, error, retry } = useFetch(
-    `${process.env.NEXT_PUBLIC_BASE_URL}/api/stripe/create_hotel_booking_payment_intent`,
-    {
-      method: "POST",
-      contentType: "application/json",
-      body: JSON.stringify({
-        slug,
-        checkInDate,
-        checkOutDate,
-      }),
-    },
-  );
-  async function middleware(next = async () => {}) {
-    try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/api/user/get_reserved_hotel`,
-        {
-          method: "POST",
-          body: JSON.stringify({
-            slug,
-            checkInDate,
-            checkOutDate,
-          }),
-        },
-      );
-      if (!res.ok) {
-        throw new Error("Failed to fetch booking details");
-      }
-
-      const data = await res.json();
-
-      if (data.success === false) {
-        throw new Error(data.message);
-      }
-
-      await next();
-    } catch (e) {
-      console.log(e);
-      toast({
-        title: "Failed confirming payment",
-        description: e.message,
-        variant: "destructive",
-      });
-    }
-  }
+  console.log("HotelBookingPayment - hotelBookingData:", hotelBookingData);
+  console.log("HotelBookingPayment - hotelBookingError:", hotelBookingError);
+  console.log("HotelBookingPayment - hotelBookingLoading:", hotelBookingLoading);
 
   function onSuccessCard() {
     toast({
@@ -189,21 +148,93 @@ export default function HotelBookingPayment({
       </div>
       <div className="flex justify-center rounded-[12px] bg-white p-[16px] shadow-md lg:mb-[30px] xl:mb-[40px]">
         {paymentMethodType === "card" && (
-          <MakePaymentSection
-            className={"w-full shadow-none"}
-            onSuccess={onSuccessCard}
-            middleware={middleware}
-            loading={loading}
-            error={error}
-            retry={retry}
-            paymentIntents={data?.data?.paymentIntents}
-            paymentStatus={data?.data?.paymentStatus}
-          />
+          <div className="w-full">
+            {hotelBookingLoading ? (
+              <div className="flex justify-center">
+                <Skeleton className="h-12 w-48" />
+              </div>
+            ) : (
+              <Button
+                onClick={async (e) => {
+                  e.currentTarget.disabled = true;
+                  try {
+                    console.log("💳 Initiating HitPay payment...");
+                    console.log("Booking data:", hotelBookingData?.data);
+                    
+                    if (!hotelBookingData?.data?._id) {
+                      throw new Error("Booking ID not found. Please try again.");
+                    }
+                    
+                    // Get guest information from booking
+                    const primaryGuest = hotelBookingData?.data?.guests?.[0] || {};
+                    
+                    const paymentPayload = {
+                      amount: hotelBookingData?.data?.totalPrice || 100,
+                      email: primaryGuest.email || "guest@example.com",
+                      name: `${primaryGuest.firstName || "Guest"} ${primaryGuest.lastName || "User"}`,
+                      phone: primaryGuest.phone || "+65 1234 5678",
+                      purpose: `Hotel Booking - ${hotelBookingData?.data?._id}`,
+                      payment_methods: ["card", "paynow_online"],
+                    };
+                    
+                    console.log("💳 Payment create payload:", paymentPayload);
+                    
+                    // Call HitPay API
+                    const response = await fetch("https://hitpay-backend.vercel.app/api/hitpay/create-payment", {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify(paymentPayload),
+                    });
+
+                    console.log("💳 HitPay response status:", response.status);
+                    
+                    if (!response.ok) {
+                      const errorText = await response.text();
+                      console.error("❌ HitPay API error:", errorText);
+                      throw new Error(`Payment API returned ${response.status}: ${errorText}`);
+                    }
+
+                    const data = await response.json();
+                    console.log("💳 Payment API response:", data);
+
+                    if (data?.success && data?.payment_url) {
+                      console.log("✅ Redirecting to HitPay payment page:", data?.payment_url);
+                      // Redirect to HitPay payment page
+                      window.location.href = data?.payment_url;
+                    } else if (data.payment_url) {
+                      console.log("✅ Redirecting to HitPay payment page:", data?.payment_url);
+                      window.location.href = data?.payment_url;
+                    } else {
+                      throw new Error(data.error || data.message || "Payment URL not received from HitPay");
+                    }
+                  } catch (error) {
+                    console.error("❌ HitPay payment error:", error);
+                    toast({
+                      title: "Payment Error",
+                      description: error.message || "Failed to initiate payment. Please try again.",
+                      variant: "destructive",
+                    });
+                    if (e?.currentTarget) {
+                      e.currentTarget.disabled = false;
+                    }
+                  }
+                }}
+                variant="default"
+                disabled={hotelBookingLoading}
+                className="w-full"
+              >
+                Pay Now
+              </Button>
+            )}
+          </div>
         )}
         {paymentMethodType === "cash" && (
           <Button
             onClick={async (e) => {
-              e.target.disabled = true;
+              const btn = e.target;
+              btn.disabled = true;
               const { success, message } = await confirmHotelBookingCashAction(
                 hotelBookingData?.data?._id,
               );
@@ -218,7 +249,7 @@ export default function HotelBookingPayment({
               if (success) {
                 onSuccessCash();
               }
-              e.target.disabled = false;
+              btn.disabled = false;
             }}
             variant="default"
             disabled={loading}

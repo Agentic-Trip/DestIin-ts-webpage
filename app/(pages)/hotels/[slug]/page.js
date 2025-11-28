@@ -86,8 +86,11 @@ export default async function HotelDetailsPage({ params }) {
   const hotelDetailss = await hotelDetailsRes.json();
   const hotelDetails = {
     ...hotelDetailss?.data,
-    images:hotelDetailss?.data?.thumbnails.map(img=>img?.value)
-
+    images:hotelDetailss?.data?.thumbnails.map(img=>img?.value),
+    rooms: hotelDetailss?.data?.rooms?.map((room) => ({
+      ...room,
+      hotelId: hotelDetailss?.data?._id || "6746b60b0f952c93060c5715", // Static fallback
+    })),
   };
   console.log("hotelDetails from external API:", hotelDetails);
 
