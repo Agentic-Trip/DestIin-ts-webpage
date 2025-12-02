@@ -6,9 +6,16 @@ import { auth } from "@/lib/auth";
 import Link from "next/link";
 export async function Footer() {
   const user = (await auth())?.user;
-  let isSubscribed;
-  if (user) {
-    isSubscribed = (await Subscription.exists({ userId: user.id }))?.subscribed;
+  let isSubscribed = false;
+  
+  try {
+    if (user) {
+      const subscription = await Subscription.findOne({ userId: user.id });
+      isSubscribed = subscription?.subscribed || false;
+    }
+  } catch (error) {
+    console.error('Error checking subscription:', error);
+    // Don't crash the page if subscription check fails
   }
   return (
     <footer className="relative pb-5">
