@@ -1,24 +1,3 @@
-import { join, resolve } from "path";
-
-const cspHeader = `
-    default-src 'self';
-    script-src 'self' 'unsafe-eval' 'unsafe-inline' https://js.stripe.com;
-    style-src 'self' 'unsafe-inline';
-    img-src 'self' blob: data: https://images.unsplash.com/ https://images.pexels.com/ https://platform-lookaside.fbsbx.com/;
-    font-src 'self';
-    object-src 'self';
-    connect-src 'self' http://localhost:* https://*.vercel.app;
-    frame-src 'self' https://www.openstreetmap.org/ https://js.stripe.com;
-    base-uri 'self';
-    form-action 'self';
-    frame-ancestors 'none';
-    upgrade-insecure-requests;
-`;
-
-/** @type {import('next').NextConfig} */
-
-const helperDirName = join(process.cwd(), "lib/email/", "helpersHbs");
-
 const nextConfig = {
   webpack: (config, { isServer }) => {
     config.module.rules.push({
