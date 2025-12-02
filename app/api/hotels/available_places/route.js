@@ -5,15 +5,6 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req) {
-  // Log minimal request details
-  try {
-    console.log("Available places API called", {
-      url: req.url,
-      method: req.method,
-    });
-  } catch (logErr) {
-    console.log("Available places API called - unable to log request details", String(logErr));
-  }
 
   const searchParams = Object.fromEntries(new URL(req.url).searchParams);
 
