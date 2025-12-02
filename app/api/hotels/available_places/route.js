@@ -1,116 +1,67 @@
 import { NextResponse } from "next/server";
 
+// ✅ Required for Vercel (prevents static build errors)
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(req) {
   try {
+    // ✅ Read token safely
     const { searchParams } = new URL(req.url);
+    const token = searchParams.get("token");
 
-    const limit = Number(searchParams.get("limit")) || 10;
-    const searchQuery =
-      searchParams.get("searchQuery")?.trim().toLowerCase() || "";
-
-    const Places = [
-      { city: "Chennai", country: "IN", code: "553248633981715834" },
-      { city: "Delhi", country: "IN", code: "180000" },
-      { city: "Bengaluru", country: "IN", code: "553248633981715864" },
-    ];
-
-    // ✅ IMPORT DB MODEL AT RUNTIME ONLY
-    const { Hotel } = await import("@/lib/db/models");
-
-    // Helper
-    const filterPlaces = (query) => {
-      if (!query) return Places;
-      return Places.filter(
-        (p) =>
-          p.city.toLowerCase().includes(query) ||
-          p.country.toLowerCase().includes(query)
+    if (!token) {
+      return NextResponse.json(
+        { success: false, message: "Token is required" },
+        { status: 400 }
       );
-    };
-
-    // ---------------- NO SEARCH ----------------
-    if (!searchQuery) {
-      const hotell = await Hotel.find({})
-        .limit(limit)
-        .select("address -_id");
-
-      const hotels =
-        hotell.length === 0
-          ? Places
-          : hotell.map((hotel) => ({
-              city: hotel.address.city,
-              country: hotel.address.country,
-              code: hotel.address.code,
-            }));
-
-      return NextResponse.json({
-        success: true,
-        message: "Available places fetched successfully",
-        data: hotels.map((h) => ({
-          city: h.city,
-          country: h.country,
-          type: "place",
-          code: h.code,
-        })),
-      });
     }
 
-    // ---------------- SEARCH ----------------
-    const safeRegex = searchQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    // ✅ Import server-only libs AT RUNTIME (VERY IMPORTANT)
+    const jwt = await import("jsonwebtoken");
+    const { User } = await import("@/lib/db/models");
 
-    const hotels = await Hotel.find({
-      $or: [
-        {
-          $expr: {
-            $regexMatch: {
-              input: { $toLower: "$address.city" },
-              regex: safeRegex,
-            },
-          },
-        },
-        {
-          $expr: {
-            $regexMatch: {
-              input: { $toLower: "$address.country" },
-              regex: safeRegex,
-            },
-          },
-        },
-      ],
-    })
-      .limit(limit)
-      .select("address -_id");
+    // ✅ Verify token
+    const decoded = jwt.default.verify(
+      token,
+      process.env.JWT_SECRET
+    );
 
-    const hotelResults = hotels.map((hotel) => ({
-      city: hotel.address.city,
-      country: hotel.address.country,
-      type: "place",
-    }));
+    if (!decoded?.id) {
+      return NextResponse.json(
+        { success: false, message: "Invalid token" },
+        { status: 400 }
+      );
+    }
 
-    const placeResults = filterPlaces(searchQuery).map((p) => ({
-      city: p.city,
-      country: p.country,
-      type: "place",
-      code: p.code,
-    }));
+    // ✅ Find user
+    const user = await User.findById(decoded.id);
 
-    const unique = {};
-    [...hotelResults, ...placeResults].forEach((item) => {
-      unique[`${item.city}-${item.country}`] = item;
-    });
+    if (!user) {
+      return NextResponse.json(
+        { success: false, message: "User not found" },
+        { status: 404 }
+      );
+    }
+
+    // ✅ Update verification status
+    user.isVerified = true;
+    await user.save();
 
     return NextResponse.json({
       success: true,
-      message: "Available places fetched successfully",
-      data: Object.values(unique),
+      message: "Email verified successfully"
     });
-  } catch (err) {
-    console.error("Available places API error:", err);
+
+  } catch (error) {
+    console.error("Confirm email error:", error);
+
     return NextResponse.json(
-      { success: false, message: "Error getting available places" },
-      { status: 500 }
+      {
+        success: false,
+        message: "Invalid or expired verification link"
+      },
+      { status: 400 }
     );
   }
 }
