@@ -1,20 +1,18 @@
 import { Hotel } from "@/lib/db/models";
 
-// Force dynamic rendering since we use request headers
+// Force dynamic rendering - this route cannot be statically generated
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req) {
-  // Log minimal, serializable request details so logs appear clearly in the server terminal
+  // Log minimal request details
   try {
-    const headers = {};
-    for (const [k, v] of req.headers) headers[k] = v;
     console.log("Available places API called", {
       url: req.url,
       method: req.method,
-      headers,
     });
   } catch (logErr) {
-    console.log("Available places API called - unable to serialize request details", String(logErr));
+    console.log("Available places API called - unable to log request details", String(logErr));
   }
 
   const searchParams = Object.fromEntries(new URL(req.url).searchParams);
