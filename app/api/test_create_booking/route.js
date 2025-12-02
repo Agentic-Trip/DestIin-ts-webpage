@@ -51,7 +51,7 @@ export async function GET(req) {
             segmentIds: [], // Empty for now or create segments if needed
             totalDurationMinutes: 120,
             layovers: [],
-            baggageAllowance: {},
+            // baggageAllowance is optional - omit it to avoid validation errors
             status: "scheduled",
             expireAt: new Date(Date.now() + 86400000 * 365)
         });
