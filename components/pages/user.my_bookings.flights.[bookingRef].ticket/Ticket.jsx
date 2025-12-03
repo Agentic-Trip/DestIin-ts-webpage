@@ -11,8 +11,6 @@ import airLineSeatMint from "@/public/icons/airline-seat-mint.svg";
 import ShowTimeInClientSide from "@/components/helpers/ShowTimeInClientSide";
 import NoSSR from "@/components/helpers/NoSSR";
 
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
 import { Separator } from "@/components/ui/separator";
 import { toDataURL } from "qrcode";
 import { useEffect, useState } from "react";
@@ -39,67 +37,12 @@ export default function FlightTicket({ ticketData }) {
     })();
   }, [qrCodeStr]);
 
-  async function handleDownload(key, passengerFullName, e) {
-    if (e) e.target.disabled = true;
-    const originalElement = document.getElementById(`ticket-${key}`);
-    if (!originalElement) return;
-
-    const clone = originalElement.cloneNode(true);
-    clone.style.width = "900px";
-    clone.style.padding = "2rem";
-    clone.style.boxSizing = "border-box";
-    clone.style.position = "absolute";
-    clone.style.top = "-9999px";
-    clone.style.left = "-9999px";
-    document.body.appendChild(clone);
-
-    // eslint-disable-next-line no-undef
-    await new Promise((r) => setTimeout(r, 100));
-
-    const scaleFactor = 1;
-
-    const canvas = await html2canvas(clone, {
-      scale: scaleFactor,
-      useCORS: true,
-      backgroundColor: "#ffffff",
-      allowTaint: true,
-    });
-
-    document.body.removeChild(clone);
-
-    const imgData = canvas.toDataURL("image/png");
-
-    const pdf = new jsPDF("p", "mm", "a4");
-
-    const imgWidth = pdf.internal.pageSize.getWidth();
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-    pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
-    pdf.save(`ticket_${key}_${passengerFullName}.pdf`);
-
-    if (e) e.target.disabled = false;
-  }
-
-  async function downloadAll(e) {
-    e.target.disabled = true;
-    const allTickets = passengers.map((p) => {
-      return handleDownload(p.key, `${p.fullName.replace(" ", "_")}`, e);
-    });
-    await Promise.all(allTickets);
-    e.target.disabled = false;
-  }
   return (
     <main className="mx-auto mb-[80px] mt-7 w-[90%] text-secondary">
       <div className="my-6 flex flex-col items-center space-y-2">
         <h3 className="text-2xl font-bold text-gray-800">
           Total paid: ${Number(totalFare).toFixed(2)}
         </h3>
-        <Button
-          onClick={downloadAll}
-          className="rounded-md bg-secondary px-5 py-2 text-white hover:bg-secondary/80"
-        >
-          Download All
-        </Button>
       </div>
 
       <div className="mx-auto max-w-[840px]">
@@ -321,16 +264,7 @@ export default function FlightTicket({ ticketData }) {
                   </address>
                 </div>
               </div>
-              <div className="flex justify-end">
-                <Button
-                  className="bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                  onClick={(e) =>
-                    handleDownload(p.key, `${p.fullName.replace(" ", "_")}`, e)
-                  }
-                >
-                  Download
-                </Button>
-              </div>
+
               <Separator className="my-8" />
             </div>
           );

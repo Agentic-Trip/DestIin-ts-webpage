@@ -46,26 +46,30 @@ async function DestinationsSection() {
           const filterOutCurrentDestination = popularDestinations.filter(
             (d) => d._id !== data.id,
           );
+
+          // Use the first available destination if filtering results in empty array, or use current destination
           const randomFrom =
-            filterOutCurrentDestination[
+            filterOutCurrentDestination.length > 0
+              ? filterOutCurrentDestination[
               Math.floor(Math.random() * filterOutCurrentDestination.length)
-            ];
+              ]
+              : destination;
 
           const searchParams = new URLSearchParams();
 
           // randomly select from
           searchParams.set(
             "from",
-            randomFrom.iataCode + "_" + randomFrom.name + "_" + randomFrom.city,
+            (randomFrom?.iataCode || "") + "_" + (randomFrom?.name || "") + "_" + (randomFrom?.city || ""),
           );
 
           searchParams.set(
             "to",
             destination.iataCode +
-              "_" +
-              destination.name +
-              "_" +
-              destination.city,
+            "_" +
+            destination.name +
+            "_" +
+            destination.city,
           );
           searchParams.set("tripType", "one_way");
           searchParams.set(
